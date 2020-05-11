@@ -25,16 +25,11 @@ The QR codes are saved as .PNG-files in the subdirectory 'QR Codes' of the scrip
 This script uses the 'QRCoder' library.
 
 NOTE:
-This script must be run with administrative privileges to enable installing/loading of necessary modules.
-
-NOTE:
-Change the value of $DarkModColor and $LightModColor for different colors.
-
-NOTE:
-You must edit this script and specify -SearchBase on line 180.
-
-NOTE:
-All AD users in -SearchBase must have the following attributes populated:
+1) This script is incompatible with PowerShell Core.
+2) This script must be run with administrative privileges to enable installing/loading of necessary modules.
+3) Change the values of $DarkModColor and $LightModColor for different colors. 
+4) You must edit this script and specify LDAP -SearchBase.
+5) All AD users in -SearchBase must have the following attributes populated:
 
 Name
 GivenName
