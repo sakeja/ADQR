@@ -28,10 +28,10 @@ NOTE:
 2) This script must be run with administrative privileges to enable installing/loading of necessary modules.
 3) You can optionally edit this script and change the values of these variables:
 
-    $DarkModColorByteArray (optional, for PNG output)
-    $LightModColorByteArray (optional, for PNG output)
-    $DarkModColorHexString (optional, for SVG output)
-    $LightModColorHexString (optional, for SVG output)
+    $DarkModColorByteArray (for PNG output)
+    $LightModColorByteArray (for PNG output)
+    $DarkModColorHexString (for SVG output)
+    $LightModColorHexString (for SVG output)
     $OutputFileFormat ("png" or "svg", default is "png")
 
 4) You *MUST* edit this script and specify LDAP -SearchBase.
