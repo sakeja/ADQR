@@ -15,30 +15,36 @@ End license text.
 
 <#
 .SYNOPSIS
-This script generates QR codes based on attributes of user objects within a hardcoded LDAP directory.
+This script generates QR codes based on user object attributes in Active Directory.
 
 .DESCRIPTION
-This script extends the functionality of 'QRCodeGenerator' by Dr. Tobias Weltner by reading vCard attributes directly from Active Directory.
-vCards are used as a basis for generating QR codes that holds contact information for Active Directory users.
-The QR codes are saved as .PNG-files in the subdirectory 'QR Codes' of the script location.
+This script extends the functionality of 'QRCodeGenerator' by Dr. Tobias Weltner by adding support for reading vCard attributes from Active Directory and output in SVG format.
+The output QR codes are saved as PNG or SVG files in the subdirectory 'QR Codes' of the script location.
 
 This script uses the 'QRCoder' library.
 
 NOTE:
 1) This script is incompatible with PowerShell Core.
 2) This script must be run with administrative privileges to enable installing/loading of necessary modules.
-3) Change the values of $DarkModColor and $LightModColor for different colors. 
-4) You must edit this script and specify LDAP -SearchBase.
-5) All AD users in -SearchBase must have the following attributes populated:
+3) You can optionally edit this script and change the values of these variables:
 
-Name
-GivenName
-Surname
-Company
-EmailAddress
-OfficePhone
-MobilePhone
-Title
+    $DarkModColorByteArray (optional, for PNG output)
+    $LightModColorByteArray (optional, for PNG output)
+    $DarkModColorHexString (optional, for SVG output)
+    $LightModColorHexString (optional, for SVG output)
+    $OutputFileFormat ("png" or "svg", default is "png")
+
+4) You *MUST* edit this script and specify LDAP -SearchBase.
+5) All Active Directory users in -SearchBase must have the following attributes populated:
+
+    Name
+    GivenName
+    Surname
+    Company
+    EmailAddress
+    OfficePhone
+    MobilePhone
+    Title
 
 .LINK
 https://github.com/TobiasPSP/Modules.QRCodeGenerator
@@ -111,29 +117,6 @@ function GenVCardQRCode {
     $Name = "$FirstName $LastName"
 
     <#
-    For info on how 'QRCoder' handles color, see:
-    https://github.com/codebude/QRCoder
-
-    and
-
-    https://github.com/codebude/QRCoder/wiki/Advanced-usage---QR-Code-renderers#25-pngbyteqrcode-renderer-in-detail
-
-    NOTE:
-    Some color combinations can't be read by QR scanners due to insufficient contrast.
-    #>
-
-    <#
-    These are the standard black and white combinations used in most QR-codes.
-    #[Byte[]] $DarkModColor = 0x00, 0x00, 0x00
-    #[Byte[]] $LightModColor = 0xff, 0xff, 0xff
-    #>
-
-    # An example combination with sufficient contrast for most QR scanners.
-    [Byte[]] $DarkModColor = 0x2b, 0x57, 0x95
-    [Byte[]] $LightModColor = 0xff, 0xff, 0xff
-    #>
-
-    <#
     For reference, the vCard 3.0 specification is published here:
     https://tools.ietf.org/html/rfc6350
 
@@ -167,19 +150,60 @@ END:VCARD
     #>
     $Data = $QRGenerator.CreateQrCode($VCard, 'Q', $True)
 
-    $QRCode = New-Object -TypeName QRCoder.PngByteQRCode -ArgumentList ($Data)
+    if ($OutputFileFormat -eq "svg") {
+        $QRCode = New-Object -TypeName QRCoder.SvgQRCode -ArgumentList ($Data)
+        $SVGFileContent = $QRCode.GetGraphic($Width, $DarkModColorHexString, $LightModColorHexString)
+        [System.IO.File]::WriteAllText($OutPath, $SVGFileContent, [System.Text.Encoding]::UTF8)
+    } else {
+        $QRCode = New-Object -TypeName QRCoder.PngByteQRCode -ArgumentList ($Data)
 
-    # This (base) method can be used for saving black and white QR codes.
-    #$ByteArray = $QRCode.GetGraphic($Width)
+        # This (base) method can be used for saving black and white QR codes.
+        #$PNGByteArray = $QRCode.GetGraphic($Width)
 
-    # This overloaded method is used for saving colored QR codes.
-    $ByteArray = $QRCode.GetGraphic($Width, $DarkModColor, $LightModColor)
+        # This overloaded method is used for saving colored QR codes.
+        $PNGByteArray = $QRCode.GetGraphic($Width, $DarkModColorByteArray, $LightModColorByteArray)
 
-    [System.IO.File]::WriteAllBytes($OutPath, $ByteArray)
+        [System.IO.File]::WriteAllBytes($OutPath, $PNGByteArray)
+    }
 }
 
+<#
+    For info on how 'QRCoder' handles color, see:
+    https://github.com/codebude/QRCoder
+
+    and
+
+    https://github.com/codebude/QRCoder/wiki/Advanced-usage---QR-Code-renderers#25-pngbyteqrcode-renderer-in-detail
+
+    NOTE:
+    Some color combinations can't be read by QR scanners due to insufficient contrast.
+
+    These are the standard black and white combinations used in most QR-codes.
+    [Byte[]] $DarkModColorByteArray = 0x00, 0x00, 0x00
+    [Byte[]] $LightModColorByteArray = 0xff, 0xff, 0xff
+    $DarkModColorHexString = "#000000"
+    $LightModColorHexString = "#ffffff"
+#>
+
+# An example color combination with sufficient contrast for most QR scanners.
+[Byte[]] $DarkModColorByteArray = 0x2b, 0x57, 0x95
+[Byte[]] $LightModColorByteArray = 0xff, 0xff, 0xff
+
+# Be sure to include the leading '#' to adhere to the XML standard.
+$DarkModColorHexString = "#2b5795"
+$LightModColorHexString = "#ffffff"
+
 $OutputFolderName = "QR Codes"
-$OutputFilenameExtension = ".png"
+
+# Change to "svg" for scalable vector graphics output.
+$OutputFileFormat = "png"
+
+# Don't change the value of 'OutputFilenameExtension', it will be set automatically depending on the value of 'OutputFileFormat'.
+$OutputFilenameExtension =".png"
+
+if ($OutputFileFormat -eq "svg") {
+    $OutputFilenameExtension = ".svg"
+}
 
 # Silently ('Out-Null') create the output directory.
 New-Item -Path "$(Get-Location)\" -Name $OutputFolderName -ItemType "Directory" -Force | Out-Null
